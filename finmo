@@ -1,0 +1,246 @@
+import org.openqa.selenium.By;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.testng.Assert;
+import org.testng.annotations.AfterTest;
+import org.testng.annotations.BeforeTest;
+import org.testng.annotations.Test;
+import io.restassured.RestAssured;
+import io.restassured.path.json.JsonPath;
+import static io.restassured.RestAssured.*;
+
+
+
+public class finmo{
+	WebDriver driver;
+
+	@BeforeTest // TestNG annotation
+
+	public void beforeTest() {
+		RestAssured.baseURI = "https://api.qafinmo.net";
+		System.setProperty("webdriver.chrome.driver",
+				"C:\\Users\\phalakc\\Downloads\\chromedriver_win32\\chromedriver.exe");
+		driver = new ChromeDriver();
+		driver.get("https://dashboard.qafinmo.net/login");
+		driver.manage().window().maximize();
+	}
+
+	@Test // TC -2:Verify that the GET request fetches all the payins.
+	public void listAllPayins() {
+
+		given().auth().preemptive()
+				.basic("AK_FINMO_SBX_1D017FA7A02B43B48DF942CF93A84995",
+						"SK_FINMO_SBX_2F5A6B9C_D864_463E_B862_0EE3AAB5ED9F")
+				.header("Content-Type", "application/json")
+
+				.when().get("v1/payin").then().assertThat().statusCode(200);
+	}
+
+	@Test // TC-3:Verify that entering the query params like the payin_id, status, created
+			// date in the GET request filters out the payins
+	// on the basis of payin_id
+	public void retrievePayin() {
+		given().auth().preemptive()
+				.basic("AK_FINMO_SBX_1D017FA7A02B43B48DF942CF93A84995",
+						"SK_FINMO_SBX_2F5A6B9C_D864_463E_B862_0EE3AAB5ED9F")
+				.header("Content-Type", "application/json")
+				.queryParam("payin_id", "payin_a08148ac4b854b5da8068c6a8e942560")
+
+				.when().get("v1/payin").then().assertThat().statusCode(200);
+	}
+
+	@Test // TC-3:Verify that entering the query params like the payin_id, status, created
+			// date in the GET request filters out the payins
+	// on the basis of status
+	public void retrievePayin1() {
+		given().auth().preemptive()
+				.basic("AK_FINMO_SBX_1D017FA7A02B43B48DF942CF93A84995",
+						"SK_FINMO_SBX_2F5A6B9C_D864_463E_B862_0EE3AAB5ED9F")
+				.header("Content-Type", "application/json").queryParam("status", "Completed")
+
+				.when().get("v1/payin").then().assertThat().statusCode(200);
+	}
+
+	@Test // TC -4 Verify that entering an incorrect payin_id gives the response code :
+			// 404 Not Found
+	public void incorrectPayin() {
+
+		given().auth().preemptive()
+				.basic("AK_FINMO_SBX_1D017FA7A02B43B48DF942CF93A84995",
+						"SK_FINMO_SBX_2F5A6B9C_D864_463E_B862_0EE3AAB5ED9F")
+				.header("Content-Type", "application/json").queryParam("payin_id", "abc")
+
+				.when().get("v1/payin").then().assertThat().statusCode(404);
+
+	}
+
+	@Test // Tc -5 Verifying that there is response code: 401 Unauthorized when the API is
+			// accessed(GET request) without the API access key.
+
+	public void noKey() {
+		given().auth().preemptive().basic("AK_FINMO_SBX_1D017FA7A02B43B48DF942CF93A84995", "")
+				.header("Content-Type", "application/json")
+
+				.when().get("v1/payin").then().assertThat().statusCode(401);
+	}
+
+	@Test // TC-6 Verifying that there is response code: 401 Unauthorized when the API is
+			// accessed(GET request) with an incorrect API access key.
+	public void incorrectKey() {
+		given().auth().preemptive()
+				.basic("AK_FINMO_SBX_1D017FA7A02B43B48DF942CF93A84995", "SK_FINMO_SBX_2F5A6B9C_D8640EE3AAB5ED9F")
+				.header("Content-Type", "application/json")
+
+				.when().get("v1/payin").then().assertThat().statusCode(401);
+	}
+
+	@Test // TC-7 Verify that the create payin api creates a new payin using the POST
+			// request by checking the status code.
+
+	public void createpayin() {
+		given().auth().preemptive()
+				.basic("AK_FINMO_SBX_1D017FA7A02B43B48DF942CF93A84995",
+						"SK_FINMO_SBX_2F5A6B9C_D864_463E_B862_0EE3AAB5ED9F")
+				.header("Content-Type", "application/json")
+				.body("{\r\n" + "  \"amount\": 221,\r\n" + "  \"currency\": \"AUD\",\r\n"
+						+ "  \"description\": \"22 AUD @ Ecommerce Store\",\r\n"
+						+ "  \"payin_method_name\": \"au_bank_npp\",\r\n" + "  \"payin_method_param\": {\r\n"
+						+ "    \"payid_reference\": \"invoice_123\"\r\n" + "  },\r\n"
+						+ "  \"organization_reference_id\": \"some-org-ref-2211\",\r\n" + "  \"metadata\": {\r\n"
+						+ "    \"invoice_id\": \"invoice_1234\"\r\n" + "  }\r\n" + "}")
+				.when().post("v1/payin").then().assertThat().statusCode(201);
+
+	}
+
+	@Test // TC -8 Verify that the create payin api return an response code 401
+			// Unauthorized and does not create an api if the authentication fails
+
+	public void createpayinIncorrectAuth() {
+		given().auth().preemptive().basic("AK_FINMO_SBX_1D017FA7A02B43B48DF942CF93A84995", "SK5A6B9C")
+				.header("Content-Type", "application/json")
+				.body("{\r\n" + "  \"amount\": 221,\r\n" + "  \"currency\": \"AUD\",\r\n"
+						+ "  \"description\": \"22 AUD @ Ecommerce Store\",\r\n"
+						+ "  \"payin_method_name\": \"au_bank_npp\",\r\n" + "  \"payin_method_param\": {\r\n"
+						+ "    \"payid_reference\": \"invoice_123\"\r\n" + "  },\r\n"
+						+ "  \"organization_reference_id\": \"some-org-ref-2211\",\r\n" + "  \"metadata\": {\r\n"
+						+ "    \"invoice_id\": \"invoice_1234\"\r\n" + "  }\r\n" + "}")
+				.when().post("v1/payin").then().assertThat().statusCode(401);
+	}
+
+	@Test // TC-9 Verify that the create payin api returns an response code 400 Bad
+			// request if we do not add the body to the POST request
+
+	public void createpayinNoBody() {
+		given().auth().preemptive()
+				.basic("AK_FINMO_SBX_1D017FA7A02B43B48DF942CF93A84995",
+						"SK_FINMO_SBX_2F5A6B9C_D864_463E_B862_0EE3AAB5ED9F")
+				.header("Content-Type", "application/json") // no body provided here
+				.when().post("v1/payin").then().assertThat().statusCode(400);
+	}
+
+//	 @Test // TC - 10 Verify that the new payin has been created using the GET request by entering the same payin_id.
+
+	public void newPayinCreated() {
+		String response = given().auth().preemptive()
+				.basic("AK_FINMO_SBX_1D017FA7A02B43B48DF942CF93A84995",
+						"SK_FINMO_SBX_2F5A6B9C_D864_463E_B862_0EE3AAB5ED9F")
+				.header("Content-Type", "application/json")
+				.body("{\r\n" + "  \"amount\": 221,\r\n" + "  \"currency\": \"AUD\",\r\n"
+						+ "  \"description\": \"22 AUD @ Ecommerce Store\",\r\n"
+						+ "  \"payin_method_name\": \"au_bank_npp\",\r\n" + "  \"payin_method_param\": {\r\n"
+						+ "    \"payid_reference\": \"invoice_123\"\r\n" + "  },\r\n"
+						+ "  \"organization_reference_id\": \"some-org-ref-2211\",\r\n" + "  \"metadata\": {\r\n"
+						+ "    \"invoice_id\": \"invoice_1234\"\r\n" + "  }\r\n" + "}")
+				.when().post("v1/payin").then().extract().asString();
+
+		JsonPath js = new JsonPath(response);
+
+		String payin_id = js.getString("data.payin_id");
+
+		String response1 = given().auth().preemptive()
+				.basic("AK_FINMO_SBX_1D017FA7A02B43B48DF942CF93A84995",
+						"SK_FINMO_SBX_2F5A6B9C_D864_463E_B862_0EE3AAB5ED9F")
+				.header("Content-Type", "application/json")
+
+				.when().get("v1/payin").then().extract().asString();
+		JsonPath js1 = new JsonPath(response1);
+		String payin_id_1 = js1.getString("data.payin_id");
+
+		Assert.assertEquals(payin_id_1.contains(payin_id), true); // checking if the newly created payin_id is present
+																	// in the response of GET
+
+	}
+
+	@Test // TC - 11, 12 Verify that the "Simulate Payin" can be clicked on the "All
+			// Payin" page.
+	public void simulatePayin() throws Exception {
+		// logging in using Selenium
+		driver.findElement(By.xpath("//input[@placeholder='Email']")).sendKeys("phalakcelly8@gmail.com");
+		driver.findElement(By.xpath("//input[@placeholder='Password']")).sendKeys("Phalak123%");
+
+		driver.findElement(By.xpath("//span[@class='MuiButton-label css-8xplcm-MuiButton-label']")).click();
+
+		Thread.sleep(10000);
+		driver.findElement(By.xpath(
+				"//div[@class='MuiTypography-root MuiTypography-body1 css-vkyyhw-MuiTypography-root'][normalize-space()='Sandbox']"))
+				.click();
+		driver.findElement(By.xpath(
+				"//span[normalize-space()='Payin']//span[@class='MuiButton-endIcon MuiButton-iconSizeMedium css-9tj150-MuiButton-endIcon']//*[name()='svg']"))
+				.click();
+		Thread.sleep(10000);
+		driver.findElement(By.xpath("//span[normalize-space()='All Payin']")).click();
+		Thread.sleep(10000);
+
+		driver.findElement(By.xpath("//tbody/tr[2]/td[5]/div[1]/span[1]")).click();
+
+		Thread.sleep(1000);
+		driver.findElement(By.xpath("//span[contains(text(),'Simulate Payin')]")).click();
+		Thread.sleep(1000);
+		driver.findElement(By.xpath("//body/div[4]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/input[1]")).clear();
+
+		driver.findElement(By.xpath("//body/div[4]/div[3]/div[1]/div[1]/div[1]/div[2]/div[1]/input[1]"))
+				.sendKeys("221");
+		Thread.sleep(1000);
+		driver.findElement(By.xpath("//span[contains(text(),'Submit')]")).click();
+
+	}
+
+	@Test // TC-13,14:Verify that the Simulate Patch request for a particular payin_id
+			// which
+	// has already "Completed" or "Cancelled" status gives a " 406 Not Acceptable"
+	// response code when the status is tried to change again to "Completed".
+
+	public void simulate()
+
+	{
+		given().auth().preemptive()
+				.basic("AK_FINMO_SBX_1D017FA7A02B43B48DF942CF93A84995",
+						"SK_FINMO_SBX_2F5A6B9C_D864_463E_B862_0EE3AAB5ED9F")
+				.header("Content-Type", "application/json")
+				.body("{\r\n" + "    \"payin_id\": \"payin_b009b1921ce54ed086dbef1b71f4ea04\",\r\n"
+						+ "    \"status\": \"COMPLETED\"\r\n" + "}")
+				.when().patch("v1/payin/simulate").then().assertThat().statusCode(406);
+	}
+
+	@Test // TC-15,16:Verify that the Cancel Patch request for a particular payin_id which
+	// does not have the status as "Pending" gives a " 406 Not Acceptable" response
+	// code when the status is tried to change again to "Cancelled".
+
+	public void cancel() {
+
+		given().auth().preemptive()
+				.basic("AK_FINMO_SBX_1D017FA7A02B43B48DF942CF93A84995",
+						"SK_FINMO_SBX_2F5A6B9C_D864_463E_B862_0EE3AAB5ED9F")
+				.header("Content-Type", "application/json").when()
+				.patch("v1/payin/payin_4831bdee60c640c5993a74e7cf74529f/cancel").then().assertThat().statusCode(406);
+	}
+
+
+
+	@AfterTest
+	public void afterTest() {
+
+		driver.quit();
+	}
+
+}
