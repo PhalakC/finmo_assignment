@@ -1,1 +1,7 @@
-# finmo_assignment
+Approach 
+The test cases mentioned in the excel sheet have been tested manually as well as using automation. Selenium has been used to automate the test cases along with RestAssured for API testing and TestNG framework for assertions.
+
+How to setup and run the code? 
+Copy the code from GIT repository and paste in Eclipse IDE. Select Run AS >> TestNG test while running the code.
+
+The no. of total test cases, passed test cases and failed test cases would be dispayed in the console.
